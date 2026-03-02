@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reset Password - Village</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
             margin: 0;
@@ -129,11 +128,22 @@
         #successMessage.hidden {
             display: none;
         }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div id="passwordForm">
+        <div id="loadingMessage" class="loading">
+            <div class="logo">🏠</div>
+            <h1>Loading...</h1>
+            <p>Please wait while we verify your reset link</p>
+        </div>
+
+        <div id="passwordForm" class="hidden">
             <div class="logo">🏠</div>
             <h1>Reset Password</h1>
             <p>Enter your new password below</p>
@@ -161,66 +171,102 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
         // Initialize Supabase
-        const supabase = window.supabase.createClient(
+        const supabase = createClient(
             'https://iampdtsxsjonlxjsggmg.supabase.co',
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlhbXBkdHN4c2pvbmx4anNnZ21nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg0NDE0MDIsImV4cCI6MjA1NDAxNzQwMn0.8_ngOnL9-Nq1vQa7qIE2VqiV8oG9DJDT8MdO5xjYJqQ'
-        );
+        )
 
-        async function updatePassword() {
-            const newPassword = document.getElementById('newPassword').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            const errorDiv = document.getElementById('errorMessage');
-            const updateBtn = document.getElementById('updateBtn');
+        // Check if user has valid session from reset link
+        async function checkSession() {
+            try {
+                const { data, error } = await supabase.auth.getSession()
+                
+                if (error) throw error
+                
+                if (data.session) {
+                    // Valid session - show password form
+                    document.getElementById('loadingMessage').classList.add('hidden')
+                    document.getElementById('passwordForm').classList.remove('hidden')
+                } else {
+                    // No session - show error
+                    document.getElementById('loadingMessage').innerHTML = `
+                        <div class="logo">⚠️</div>
+                        <h1>Invalid Link</h1>
+                        <p>This reset link is invalid or has expired. Please request a new password reset from the Village app.</p>
+                    `
+                }
+            } catch (error) {
+                console.error('Session check error:', error)
+                document.getElementById('loadingMessage').innerHTML = `
+                    <div class="logo">⚠️</div>
+                    <h1>Error</h1>
+                    <p>Something went wrong. Please try requesting a new password reset.</p>
+                `
+            }
+        }
+
+        // Update password function
+        window.updatePassword = async function() {
+            const newPassword = document.getElementById('newPassword').value
+            const confirmPassword = document.getElementById('confirmPassword').value
+            const errorDiv = document.getElementById('errorMessage')
+            const updateBtn = document.getElementById('updateBtn')
             
             // Clear previous errors
-            errorDiv.textContent = '';
+            errorDiv.textContent = ''
             
             // Validation
             if (!newPassword || !confirmPassword) {
-                errorDiv.textContent = 'Please fill in both fields';
-                return;
+                errorDiv.textContent = 'Please fill in both fields'
+                return
             }
             
             if (newPassword.length < 6) {
-                errorDiv.textContent = 'Password must be at least 6 characters';
-                return;
+                errorDiv.textContent = 'Password must be at least 6 characters'
+                return
             }
             
             if (newPassword !== confirmPassword) {
-                errorDiv.textContent = 'Passwords do not match';
-                return;
+                errorDiv.textContent = 'Passwords do not match'
+                return
             }
             
             // Disable button
-            updateBtn.disabled = true;
-            updateBtn.textContent = 'Updating...';
+            updateBtn.disabled = true
+            updateBtn.textContent = 'Updating...'
             
             try {
                 const { data, error } = await supabase.auth.updateUser({
                     password: newPassword
-                });
+                })
                 
-                if (error) throw error;
+                if (error) throw error
                 
                 // Show success
-                document.getElementById('passwordForm').classList.add('hidden');
-                document.getElementById('successMessage').classList.remove('hidden');
+                document.getElementById('passwordForm').classList.add('hidden')
+                document.getElementById('successMessage').classList.remove('hidden')
                 
             } catch (error) {
-                errorDiv.textContent = error.message || 'Failed to update password. Please try again.';
-                updateBtn.disabled = false;
-                updateBtn.textContent = 'Update Password';
+                console.error('Update error:', error)
+                errorDiv.textContent = error.message || 'Failed to update password. Please try again.'
+                updateBtn.disabled = false
+                updateBtn.textContent = 'Update Password'
             }
         }
-        
+
         // Allow Enter key to submit
-        document.getElementById('confirmPassword').addEventListener('keypress', function(e) {
+        document.getElementById('confirmPassword')?.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                updatePassword();
+                updatePassword()
             }
-        });
+        })
+
+        // Check session on load
+        checkSession()
     </script>
 </body>
 </html>
