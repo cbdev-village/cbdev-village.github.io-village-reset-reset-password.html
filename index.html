@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reset Password - Village</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        .logo {
+            text-align: center;
+            font-size: 60px;
+            margin-bottom: 10px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2e3138;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        p {
+            text-align: center;
+            color: #7a7a7a;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            color: #7a7a7a;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #ff6b35;
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .error {
+            color: #ff3b30;
+            font-size: 14px;
+            margin-top: 10px;
+            text-align: center;
+        }
+        
+        .success {
+            text-align: center;
+        }
+        
+        .success-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+        
+        .success h2 {
+            color: #2e3138;
+            margin-bottom: 15px;
+        }
+        
+        .success p {
+            color: #7a7a7a;
+            margin-bottom: 10px;
+        }
+        
+        #passwordForm.hidden,
+        #successMessage.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="passwordForm">
+            <div class="logo">🏠</div>
+            <h1>Reset Password</h1>
+            <p>Enter your new password below</p>
+            
+            <div class="form-group">
+                <label>New Password</label>
+                <input type="password" id="newPassword" placeholder="Enter new password (6+ characters)" />
+            </div>
+            
+            <div class="form-group">
+                <label>Confirm Password</label>
+                <input type="password" id="confirmPassword" placeholder="Re-enter new password" />
+            </div>
+            
+            <button id="updateBtn" onclick="updatePassword()">Update Password</button>
+            
+            <div id="errorMessage" class="error"></div>
+        </div>
+        
+        <div id="successMessage" class="hidden success">
+            <div class="success-icon">✅</div>
+            <h2>Password Updated!</h2>
+            <p>Your password has been successfully updated.</p>
+            <p><strong>Return to the Village app and sign in with your new password.</strong></p>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Supabase
+        const supabase = window.supabase.createClient(
+            'https://iampdtsxsjonlxjsggmg.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlhbXBkdHN4c2pvbmx4anNnZ21nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg0NDE0MDIsImV4cCI6MjA1NDAxNzQwMn0.8_ngOnL9-Nq1vQa7qIE2VqiV8oG9DJDT8MdO5xjYJqQ'
+        );
+
+        async function updatePassword() {
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const errorDiv = document.getElementById('errorMessage');
+            const updateBtn = document.getElementById('updateBtn');
+            
+            // Clear previous errors
+            errorDiv.textContent = '';
+            
+            // Validation
+            if (!newPassword || !confirmPassword) {
+                errorDiv.textContent = 'Please fill in both fields';
+                return;
+            }
+            
+            if (newPassword.length < 6) {
+                errorDiv.textContent = 'Password must be at least 6 characters';
+                return;
+            }
+            
+            if (newPassword !== confirmPassword) {
+                errorDiv.textContent = 'Passwords do not match';
+                return;
+            }
+            
+            // Disable button
+            updateBtn.disabled = true;
+            updateBtn.textContent = 'Updating...';
+            
+            try {
+                const { data, error } = await supabase.auth.updateUser({
+                    password: newPassword
+                });
+                
+                if (error) throw error;
+                
+                // Show success
+                document.getElementById('passwordForm').classList.add('hidden');
+                document.getElementById('successMessage').classList.remove('hidden');
+                
+            } catch (error) {
+                errorDiv.textContent = error.message || 'Failed to update password. Please try again.';
+                updateBtn.disabled = false;
+                updateBtn.textContent = 'Update Password';
+            }
+        }
+        
+        // Allow Enter key to submit
+        document.getElementById('confirmPassword').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                updatePassword();
+            }
+        });
+    </script>
+</body>
+</html>
